@@ -89,6 +89,17 @@ public:
         return head;
     }
 
+    Point* getTail() {
+        if (head == nullptr) {
+            return nullptr;
+        }
+        Point* temp = head;
+        while (temp->next != nullptr) {
+            temp = temp->next;
+        }
+        return temp;
+    }
+
     vector<Point> toVector() {
         vector<Point> points;
         Point* temp = head;
@@ -119,6 +130,16 @@ public:
 
         return edges;
     }
+
+    int size() {
+        int count = 0;
+        Point* current = head;
+        while (current != nullptr) {
+            count++;
+            current = current->next;
+        }
+        return count;
+    }
 };
 
 void evaluateCommandLine(int argc, char* argv[], char** inFileName);
@@ -126,7 +147,7 @@ void readFile(char** filename, LinkedList& PointListA, LinkedList& PointListB);
 void printVertices(LinkedList& pointList, const string& polygonName);
 Point getIntersectionPoint(Edge edgeOne, Edge edgeTwo);
 int interesctionTestInsideOut(Edge edgeOne, Edge edgeTwo);
-bool isPointInside(Point& point, LinkedList& polygon);
+bool isPointInside(const Point& point, LinkedList& polygon);
 
 
 
@@ -138,7 +159,7 @@ int main(int argc, char* argv[])
     LinkedList PointListA;
     LinkedList PointListB;
     LinkedList EdgeIntersections;
-    LinkedList Output;
+    LinkedList output;
   
 
 
@@ -200,11 +221,11 @@ void readFile(char** filename, LinkedList& PointListA, LinkedList& PointListB) {
     MyFile.close();
 }
 
-bool isPointInside(Point& point, LinkedList& polygon) {
+bool isPointInside(const Point& point, LinkedList& polygon) {
     vector<Edge> polygonEdges = polygon.getEdges();
     int n = polygonEdges.size();
     bool inside = false;
-    Point pPrime(point.x * 100, point.y);
+    Point pPrime(point.x * 1000, point.y);
     Edge testEdge(point, pPrime);
     int count = 0;
     for (int i = 0; i < n; i++) {
@@ -227,7 +248,7 @@ Point getIntersectionPoint(Edge edgeOne, Edge edgeTwo) {
     double distancex2 = edgeTwo.end.x - edgeTwo.start.x;
     double distancey2 = edgeTwo.end.y - edgeTwo.start.y;
 
-    if ((distancey0 * distancex2 - distancex0 * distancey2) == 0 || (distancey2 * distancex0 - distancex2 * distancey0) == 0) {
+    if ((distancey0 * distancex2 - distancex0 * distancey2) < 1e-10 || (distancey2 * distancex0 - distancex2 * distancey0) < 1e-10) {
         return Point(0.0, 0.0);
     }
     double t0 = ((edgeOne.start.x - edgeTwo.start.x) * distancey2 + (edgeTwo.start.y - edgeOne.start.y) * distancex2) / (distancey0 * distancex2 - distancex0 * distancey2);
@@ -247,7 +268,7 @@ int interesctionTestInsideOut(Edge edgeOne, Edge edgeTwo) {
     double distancex2 = edgeTwo.end.x - edgeTwo.start.x;
     double distancey2 = edgeTwo.end.y - edgeTwo.start.y;
 
-    if ((distancey0 * distancex2 - distancex0 * distancey2) == 0 || (distancey2 * distancex0 - distancex2 * distancey0) == 0) {
+    if ((distancey0 * distancex2 - distancex0 * distancey2) < 1e-10 || (distancey2 * distancex0 - distancex2 * distancey0) < 1e-10) {
         return 0;
     }
     double t0 = ((edgeOne.start.x - edgeTwo.start.x) * distancey2 + (edgeTwo.start.y - edgeOne.start.y) * distancex2) / (distancey0 * distancex2 - distancex0 * distancey2);
@@ -261,7 +282,40 @@ int interesctionTestInsideOut(Edge edgeOne, Edge edgeTwo) {
     return 0;
 }
 
-void unionPolygon()
+void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output) {
+    vector<Edge> p0 = polygonA.getEdges();
+    vector<Edge> p1 = polygonB.getEdges();
+   
+    const Point* vi = nullptr;
+    const Point* nextVertex = nullptr;
+
+    for (const auto& edgeA : p0) {
+        if (!isPointInside(edgeA.start, polygonB)) {
+            vi = &edgeA.start;
+            nextVertex = &edgeA.end;
+            output.insertAtEnd(vi->x, vi->y);
+            break;
+        }
+    }
+
+    Edge currentEdge(*vi, *nextVertex);
+
+    while ((output.size() < 2) || (output.getHead() != output.getTail())) {
+
+        for (const auto& edgeB : p1) {
+            if (interesctionTestInsideOut(currentEdge, edgeB) == 1) {
+                Point intersection = getIntersectionPoint(currentEdge, edgeB);
+                if (intersection.x != 0.0 || intersection.y != 0.0) {
+                    output.insertAtEnd(intersection.x, intersection.y);
+                }
+            }
+        }
+     }
+}
+
+
+
+
 
 
 void printVertices(LinkedList& pointList, const string& polygonName) {
