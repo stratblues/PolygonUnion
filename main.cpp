@@ -326,12 +326,12 @@ void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output
     output.insertAtEnd(vi->x, vi->y);
     Point* nextVertex = vi->next ? vi->next : P0->getHead();
     Edge currentEdge(*vi, *nextVertex);
+   
     while(output.size() < 10) {
-      
         double lowestT = 1.0;
         Point intersectionPoint;
         bool intersectionFound = false;
-        /*Point* lastVertInP1IntersectedEdge = nullptr;*/
+        Point* lastVertInP1IntersectedEdge = nullptr;
         for (Edge& edge : P1->getEdges()) {
             cout << "current edge: " << edge << endl;
             auto result = getIntersectionPoint(currentEdge, edge);
@@ -339,27 +339,32 @@ void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output
             if (t >= 0 && t < lowestT) {
                 intersectionPoint = result.first;
                 lowestT = t;
-                /*lastVertInP1IntersectedEdge = &edge.end;*/
+                lastVertInP1IntersectedEdge = &edge.end;
                 intersectionFound = true;
             }
         }
 
         if (intersectionFound) {
             output.insertAtEnd(intersectionPoint.x, intersectionPoint.y);
-            /*output.insertAtEnd(lastVertInP1IntersectedEdge->x, lastVertInP1IntersectedEdge->y);*/
-            vi = &intersectionPoint;
-            std::swap(P1, P0);
-            /*LinkedList* temp = P1;
+            output.insertAtEnd(lastVertInP1IntersectedEdge->x, lastVertInP1IntersectedEdge->y);
+            vi = new Point(intersectionPoint.x, intersectionPoint.y);
+            currentEdge = Edge(*lastVertInP1IntersectedEdge, *lastVertInP1IntersectedEdge->next);
+            LinkedList* temp = P1;
             P1 = P0;
-            P0 = temp;*/
+            P0 = temp;
 
         }
         else {
-            output.insertAtEnd(nextVertex->x,nextVertex->y);
-            vi = nextVertex->next; 
+            output.insertAtEnd(currentEdge.end.x,currentEdge.end.y);
+            vi = &currentEdge.end;
+            Point* next = currentEdge.end.next ? currentEdge.end.next : P1->getHead();
+            currentEdge = Edge(currentEdge.end, *next);
+            
         }
+       
         
     }
+    output.insertAtEnd(output.getHead()->x, output.getHead()->y);
 }
 
 
