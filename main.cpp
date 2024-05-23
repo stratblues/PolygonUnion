@@ -6,7 +6,7 @@
 #include <vector>
 #include <cmath>
 #include <math.h>
-#include <ostream>
+
 /*
 * @file
 * @author Tony Stanell <ts3552@drexel.edu>
@@ -48,10 +48,7 @@ public:
         this->next = nullptr;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Edge& edge) {
-        os << "Edge from (" << edge.start.x << ", " << edge.start.y << ") to (" << edge.end.x << ", " << edge.end.y << ")";
-        return os;
-    }
+   
 
    
 };
@@ -88,11 +85,14 @@ public:
 
     void printList() {
         Point* temp = head;
+        cout << temp->x << " " << temp->y << " moveto" << endl;
+        temp = temp->next;
         while (temp != nullptr) {
-            cout << temp->x << "," << temp->y << endl;
+            cout << temp->x << " " << temp->y << " lineto" << endl;  
             temp = temp->next;
         }
-        cout << endl;
+        
+       
     }
 
     Point* getHead() {
@@ -158,7 +158,8 @@ void printVertices(LinkedList& pointList, const string& polygonName);
 pair<Point, double> getIntersectionPoint(Edge edgeOne, Edge edgeTwo);
 int intersectionTestInsideOut(Edge edgeOne, Edge edgeTwo);
 bool isPointInside(const Point& point, LinkedList& polygon);
-void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output);
+LinkedList computeUnionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output);
+void printToPostScriptFormat(LinkedList& output);
 
 
 
@@ -171,7 +172,7 @@ int main(int argc, char* argv[])
     LinkedList PointListB;
     LinkedList EdgeIntersections;
     LinkedList output;
-  
+    LinkedList unionResult;
 
 
  
@@ -180,13 +181,12 @@ int main(int argc, char* argv[])
     evaluateCommandLine(argc, argv, &inFileName);
     readFile(&inFileName, PointListA, PointListB);
 
-    printVertices(PointListA, "Polygon A");
-    printVertices(PointListB, "Polygon B");
+  
 
-    unionPolygon(PointListA, PointListB, output);
+    unionResult = computeUnionPolygon(PointListA, PointListB, output);
+    printToPostScriptFormat(unionResult);
 
-    cout << "Union of Polygon A and B vertices:" << endl;
-    output.printList();
+   
 
 }
 
@@ -262,27 +262,21 @@ pair<Point, double> getIntersectionPoint(Edge edgeOne, Edge edgeTwo) {
 
     double denominator = (deltay0 * deltax2 - deltax0 * deltay2);
 
-    cout << "Edge One Start: (" << edgeOne.start.x << ", " << edgeOne.start.y << "), End: (" << edgeOne.end.x << ", " << edgeOne.end.y << ")" << endl;
-    cout << "Edge Two Start: (" << edgeTwo.start.x << ", " << edgeTwo.start.y << "), End: (" << edgeTwo.end.x << ", " << edgeTwo.end.y << ")" << endl;
-    cout << "delta x0: " << deltax0 << ", delta y0: " << deltay0 << endl;
-    cout << "delta x2: " << deltax2 << ", delta y2: " << deltay2 << endl;
-    cout << "Denominator: " << denominator << endl;
 
     if (denominator == 0) {
-        cout << "Edges are parallel no intersection." << endl;
+   
         return { Point(1e+38, 1e+38), -1 };
     }
     double t0 = ((edgeOne.start.x - edgeTwo.start.x) * deltay2 + (edgeTwo.start.y - edgeOne.start.y) * deltax2) / denominator;
     double t2 = -1.00*(((edgeTwo.start.x - edgeOne.start.x) * deltay0 + (edgeOne.start.y - edgeTwo.start.y) * deltax0) / denominator);
-    cout << "t0: " << t0  << endl;
-    cout << "t2: " << t2 << endl;
+   
     if (t0 >= 0 && t0 <= 1 && t2 >= 0 && t2 <= 1) {
         double intersectionX = edgeOne.start.x + t0 * deltax0;
         double intersectionY = edgeOne.start.y + t0 * deltay0;
-        cout << "Intersection Point: (" << intersectionX << ", " << intersectionY << ")" << endl;
+       
         return { Point(intersectionX, intersectionY), t0 };
     }
-    cout << "no valid intersection found." << endl;
+   
     return { Point(1e+38, 1e+38), -1 };
 }
 
@@ -305,7 +299,7 @@ int intersectionTestInsideOut(Edge edgeOne, Edge edgeTwo) {
     return 0;
 }
 
-void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output) {
+LinkedList computeUnionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output) {
     LinkedList* P0 = &polygonA;  
     LinkedList* P1 = &polygonB;  
     Point* vi = nullptr;
@@ -330,7 +324,7 @@ void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output
         bool intersectionFound = false;
         Point* lastVertInP1IntersectedEdge = nullptr;
         for (Edge& edge : P1->getEdges()) {
-            cout << "current edge: " << edge << endl;
+         
             auto result = getIntersectionPoint(currentEdge, edge);
             double t = result.second;
             if (t >= 0 && t < lowestT) {
@@ -361,7 +355,7 @@ void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output
        
         
     }
-   
+    return output;
 }
 
 
@@ -369,4 +363,12 @@ void printVertices(LinkedList& pointList, const string& polygonName) {
     cout << polygonName << " vertices:" << endl;
     pointList.printList();
     
+}
+
+void printToPostScriptFormat(LinkedList& output) {
+    cout << "%%%BEGIN" << endl;
+    output.printList();
+    cout << "stroke" << endl;
+    cout << "%%%END" << endl;
+
 }
