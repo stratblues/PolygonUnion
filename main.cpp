@@ -219,9 +219,6 @@ void readFile(char** filename, LinkedList& PointListA, LinkedList& PointListB) {
             count += 1;
         }
         if (iss >> point[0] >> point[1] >> command) {
-            if (command == "moveto") {
-                continue;
-            }
             if (count < 1) {
                 PointListA.insertAtEnd(point[0], point[1]);
 
@@ -327,7 +324,7 @@ void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output
     Point* nextVertex = vi->next ? vi->next : P0->getHead();
     Edge currentEdge(*vi, *nextVertex);
    
-    while(output.size() < 10) {
+    while ((output.size() < 2) || (output.getHead()->x != output.getTail()->x || output.getHead()->y != output.getTail()->y)) {
         double lowestT = 1.0;
         Point intersectionPoint;
         bool intersectionFound = false;
@@ -359,12 +356,12 @@ void unionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output
             vi = &currentEdge.end;
             Point* next = currentEdge.end.next ? currentEdge.end.next : P1->getHead();
             currentEdge = Edge(currentEdge.end, *next);
-            
+           
         }
        
         
     }
-    output.insertAtEnd(output.getHead()->x, output.getHead()->y);
+   
 }
 
 
