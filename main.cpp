@@ -6,7 +6,7 @@
 #include <vector>
 #include <cmath>
 #include <math.h>
-
+#include <ostream>
 /*
 * @file
 * @author Tony Stanell <ts3552@drexel.edu>
@@ -48,7 +48,10 @@ public:
         this->next = nullptr;
     }
 
-   
+    friend std::ostream& operator<<(std::ostream& os, const Edge& edge) {
+        os << "Edge from (" << edge.start.x << ", " << edge.start.y << ") to (" << edge.end.x << ", " << edge.end.y << ")";
+        return os;
+    }
 
    
 };
@@ -156,7 +159,7 @@ void evaluateCommandLine(int argc, char* argv[], char** inFileName);
 void readFile(char** filename, LinkedList& PointListA, LinkedList& PointListB);
 void printVertices(LinkedList& pointList, const string& polygonName);
 pair<Point, double> getIntersectionPoint(Edge edgeOne, Edge edgeTwo);
-int intersectionTestInsideOut(Edge edgeOne, Edge edgeTwo);
+pair<int, double> intersectionTestInsideOut(Edge edgeOne, Edge edgeTwo);
 bool isPointInside(const Point& point, LinkedList& polygon);
 LinkedList computeUnionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output);
 void printToPostScriptFormat(LinkedList& output);
@@ -241,7 +244,15 @@ bool isPointInside(Point& point, LinkedList& polygon) {
     Edge testEdge(point, pPrime);
     int count = 0;
     for (int i = 0; i < n; i++) {
-        count += intersectionTestInsideOut(testEdge, polygonEdges[i]);
+        auto [intersects,t] = intersectionTestInsideOut(testEdge, polygonEdges[i]);
+        if (intersects) {
+            if (t == 0 || t == 1) {
+                count += 0.5;
+            }
+            else {
+                count += intersects;
+            }
+        }
     }
     if (count % 2 == 0 || count == 0) {
         return false;
@@ -262,25 +273,24 @@ pair<Point, double> getIntersectionPoint(Edge edgeOne, Edge edgeTwo) {
 
     double denominator = (deltay0 * deltax2 - deltax0 * deltay2);
 
-
     if (denominator == 0) {
-   
+      
         return { Point(1e+38, 1e+38), -1 };
     }
     double t0 = ((edgeOne.start.x - edgeTwo.start.x) * deltay2 + (edgeTwo.start.y - edgeOne.start.y) * deltax2) / denominator;
     double t2 = -1.00*(((edgeTwo.start.x - edgeOne.start.x) * deltay0 + (edgeOne.start.y - edgeTwo.start.y) * deltax0) / denominator);
-   
+
     if (t0 >= 0 && t0 <= 1 && t2 >= 0 && t2 <= 1) {
         double intersectionX = edgeOne.start.x + t0 * deltax0;
         double intersectionY = edgeOne.start.y + t0 * deltay0;
-       
+      
         return { Point(intersectionX, intersectionY), t0 };
     }
-   
+
     return { Point(1e+38, 1e+38), -1 };
 }
 
-int intersectionTestInsideOut(Edge edgeOne, Edge edgeTwo) {
+pair<int, double> intersectionTestInsideOut(Edge edgeOne, Edge edgeTwo) {
     double deltax0 = edgeOne.end.x - edgeOne.start.x;
     double deltay0 = edgeOne.end.y - edgeOne.start.y;
     double deltax2 = edgeTwo.end.x - edgeTwo.start.x;
@@ -288,15 +298,15 @@ int intersectionTestInsideOut(Edge edgeOne, Edge edgeTwo) {
 
     double denominator = (deltay0 * deltax2 - deltax0 * deltay2);
     if (denominator == 0) {
-        return 0;
+        return { 0, -1.00 };
     }
     double t0 = ((edgeOne.start.x - edgeTwo.start.x) * deltay2 + (edgeTwo.start.y - edgeOne.start.y) * deltax2) / denominator;
     double t2 = -1.00 * (((edgeTwo.start.x - edgeOne.start.x) * deltay0 + (edgeOne.start.y - edgeTwo.start.y) * deltax0) / denominator);
     if (t0 >= 0 && t0 <= 1 && t2 >= 0 && t2 <= 1) {
        
-        return 1;
+        return { 1, t0 };
     }
-    return 0;
+    return { 0, -1.00 };
 }
 
 LinkedList computeUnionPolygon(LinkedList& polygonA, LinkedList& polygonB, LinkedList& output) {
@@ -315,9 +325,11 @@ LinkedList computeUnionPolygon(LinkedList& polygonA, LinkedList& polygonB, Linke
 
    
     output.insertAtEnd(vi->x, vi->y);
+
     Point* nextVertex = vi->next ? vi->next : P0->getHead();
     Edge currentEdge(*vi, *nextVertex);
-   
+  
+
     while ((output.size() < 2) || (output.getHead()->x != output.getTail()->x || output.getHead()->y != output.getTail()->y)) {
         double lowestT = 1.0;
         Point intersectionPoint;
@@ -336,10 +348,14 @@ LinkedList computeUnionPolygon(LinkedList& polygonA, LinkedList& polygonB, Linke
         }
 
         if (intersectionFound) {
+           
+    
             output.insertAtEnd(intersectionPoint.x, intersectionPoint.y);
             output.insertAtEnd(lastVertInP1IntersectedEdge->x, lastVertInP1IntersectedEdge->y);
             vi = new Point(intersectionPoint.x, intersectionPoint.y);
-            currentEdge = Edge(*lastVertInP1IntersectedEdge, *lastVertInP1IntersectedEdge->next);
+            currentEdge = Edge(*lastVertInP1IntersectedEdge, *(lastVertInP1IntersectedEdge->next ? lastVertInP1IntersectedEdge->next : P1->getHead()));
+           
+           
             LinkedList* temp = P1;
             P1 = P0;
             P0 = temp;
@@ -348,8 +364,9 @@ LinkedList computeUnionPolygon(LinkedList& polygonA, LinkedList& polygonB, Linke
         else {
             output.insertAtEnd(currentEdge.end.x,currentEdge.end.y);
             vi = &currentEdge.end;
-            Point* next = currentEdge.end.next ? currentEdge.end.next : P1->getHead();
-            currentEdge = Edge(currentEdge.end, *next);
+            Point* next = currentEdge.end.next ? currentEdge.end.next : P0->getHead();
+            currentEdge = Edge(*vi, *next);
+            
            
         }
        
